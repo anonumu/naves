@@ -349,7 +349,7 @@
             render();
         });
 
-        // Вращение мышью
+        // --- Обработчики для мыши ---
         let isDragging = false;
         let prevMouse = { x: 0, y: 0 };
         document.addEventListener('mousedown', (e) => { isDragging = true; prevMouse = { x: e.clientX, y: e.clientY }; });
@@ -371,6 +371,54 @@
             camera.zoom = Math.max(0.5, Math.min(10.0, camera.zoom));
             camera.updateProjectionMatrix();
             render();
+        }, { passive: false });
+
+        // --- Обработчики для телефонов (Touch) ---
+        let initialPinchDistance = null;
+        let initialZoom = 1;
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                // Один палец - вращение
+                isDragging = true;
+                prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2) {
+                // Два пальца - начало зума
+                isDragging = false; 
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialPinchDistance = Math.hypot(dx, dy);
+                initialZoom = camera.zoom;
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', (e) => {
+            isDragging = false;
+            if (e.touches.length < 2) {
+                initialPinchDistance = null;
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Запрещаем скролл страницы при касании канваса
+            
+            if (isDragging && e.touches.length === 1) {
+                // Вращение одним пальцем
+                group.rotation.y += (e.touches[0].clientX - prevMouse.x) * 0.01;
+                render();
+                prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else if (e.touches.length === 2 && initialPinchDistance) {
+                // Зум двумя пальцами (Pinch-to-zoom)
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.hypot(dx, dy);
+                
+                const zoomFactor = distance / initialPinchDistance;
+                camera.zoom = initialZoom * zoomFactor;
+                camera.zoom = Math.max(0.5, Math.min(10.0, camera.zoom));
+                camera.updateProjectionMatrix();
+                render();
+            }
         }, { passive: false });
     </script>
 </body>
